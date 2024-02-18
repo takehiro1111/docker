@@ -7,8 +7,8 @@ services:
       MYSQL_USER: wordpress
       MYSQL_PASSWORD: wordpress
     restart: always # どんな状態でも意図しない停止から自動的に再起動する設定
-    # networks:
-    #   - mysql-net
+    networks:
+      - mysql-net
     ports:
       - "3306:3306"
     volumes:
@@ -37,13 +37,15 @@ services:
       WORDPRESS_DB_PASSWORD: wordpress
     volumes: 
      - wordpress-data:/var/www/html
+    networks:
+      - mysql-net
 
 volumes:
     db_data: 
     wordpress-data:
 
-# networks:
-#   mysql-net:
-#     driver: bridge
+networks:
+  mysql-net:
+    driver: bridge
 
 # 環境変数名のキーはDocker公式に準拠する必要がある。

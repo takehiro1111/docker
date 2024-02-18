@@ -1,2 +1,2 @@
 # docker
-dockerの練習用リポジトリ
+- dockerの練習用リポジトリ
