@@ -1,0 +1,51 @@
+services: 
+  db:
+    image: mysql:8.3.0
+    environment: 
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    restart: always # どんな状態でも意図しない停止から自動的に再起動する設定
+    networks:
+      - mysql-net
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    command: '--default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci'
+    
+  # cli:
+  #   image: mysql:8.3.0
+  #   depends_on:
+  #     - mysql_8
+  #   networks:
+  #     - mysql-net
+  #   command: mysql -hmysql_8 -uadmin -ppass test1
+
+  APP:
+    depends_on:
+       - db
+    image: wordpress:latest
+    ports:
+      - "8080:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes: 
+     - wordpress-data:/var/www/html
+    networks:
+      - mysql-net
+
+volumes:
+    db_data: 
+    wordpress-data:
+
+networks:
+  mysql-net:
+    driver: bridge
+
+# 環境変数名のキーはDocker公式に準拠する必要がある。

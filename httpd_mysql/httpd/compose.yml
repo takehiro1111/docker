@@ -1,0 +1,6 @@
+services:
+  web_server:
+    image: httpd:2.4
+    ports: 
+      - "8080:80"
+
