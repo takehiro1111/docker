@@ -1,2 +1,4 @@
 # docker
-- dockerの練習用リポジトリ
+- dockerイメージの作成
+- docker compopse
+- dockerに関連するconfやwebページ
