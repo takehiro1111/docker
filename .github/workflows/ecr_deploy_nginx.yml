@@ -1,0 +1,58 @@
+name: Nginx Deploy ECR Repository
+
+on:
+  push:
+    paths:
+      - 'nginx/**'
+  workflow_dispatch:
+
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECS_CLUSTER: cluster-web
+  ECS_SERVICE: nginx-service-stg
+  ECS_TASK_DEFINITION_API: nginx-task-define
+  ECR_REPOSITORY: nginx
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  nginx-ecr-push:
+    runs-on: ubuntu-latest
+    defaults: # defaultsを設定することでワークフロー内の全てのjobに値が反映される。
+      run:
+        working-directory:  nginx/
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+    # https://github.com/aws-actions/configure-aws-credentials
+      - name: Configure AWS Credentials OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+    # https://github.com/aws-actions/amazon-ecr-login
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push the image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}  # 'Login to Amazon ECR'の結果の中の'repository'の値を参照する
+          # docker image tag temp_api_image:latest {アカウントID}.dkr.ecr.ap-northeast-1.amazonaws.com/nginx:sha
+        run: | 
+          docker image build -t temp_api_image:latest .
+          docker image tag temp_api_image:latest $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker image push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          echo $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} > nginx-image-uri.txt
+      
+    # https://github.com/actions/upload-artifact
+      - name: upload the Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nginx-image-uri
+          path: nginx/api-image-uri.txt
