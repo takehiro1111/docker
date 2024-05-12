@@ -12,6 +12,7 @@ env:
   ECS_SERVICE: nginx-service-stg
   ECS_TASK_DEFINITION_API: nginx/.aws/nginx-task-define.json
   ECR_REPOSITORY: nginx
+  CONTAINER_NAME: ngix-container
 
 permissions:
   id-token: write
@@ -89,7 +90,7 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: ${{ env.ECS_TASK_DEFINITION_API }}
-          container-name: api
+          container-name: ${{ env.CONTAINER_NAME}}
           image: ${{ env.NGINX_IMAGE_URI }}
 
       #  https://github.com/aws-actions/amazon-ecs-deploy-task-definition
