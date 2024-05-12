@@ -12,7 +12,7 @@ env:
   ECS_SERVICE: nginx-service-stg
   ECS_TASK_DEFINITION_API: nginx/.aws/nginx-task-define.json
   ECR_REPOSITORY: nginx
-  CONTAINER_NAME: ngix-container
+  CONTAINER_NAME: ngix-container # タスク定義内の"name"と合わせる必要がある。
 
 permissions:
   id-token: write
