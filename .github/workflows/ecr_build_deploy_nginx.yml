@@ -24,6 +24,9 @@ jobs:
       matrix:
         include:
           - working_directory: nginx/
+            ecr_repository: nginx
+    env:
+      ECR_REPOSITORY: ${{ matrix.ecr_repository }}
     defaults:
       run:
         working-directory: ${{ matrix.working_directory }}
@@ -72,13 +75,11 @@ jobs:
           - ecs_cluster: cluster-web
             ecs_service: nginx-service-stg
             ecs_task_difinition_api: nginx/.aws/nginx-task-define.json
-            ecr_repository: nginx
             container_name: nginx-container # タスク定義内の"name"と合わせる必要がある。
     env:
       ECS_CLUSTER: ${{ matrix.ecs_cluster }}
       ECS_SERVICE: ${{ matrix.ecs_service }}
       ECS_TASK_DEFINITION_API: ${{ matrix.ecs_task_difinition_api }}
-      ECR_REPOSITORY: ${{ matrix.ecr_repository }}
       CONTAINER_NAME: ${{ matrix.container_name }}
 
     steps: 
