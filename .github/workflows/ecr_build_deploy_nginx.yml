@@ -1,7 +1,11 @@
 name: Nginx Deploy ECR Repository
+run-name: ${{ github.workflow }} by @${{ github.actor }}
+
 
 on:
   push:
+    branches:
+      - 'main'
     paths:
       - 'nginx/**'
   workflow_dispatch:
@@ -12,18 +16,18 @@ env:
   ECS_SERVICE: nginx-service-stg
   ECS_TASK_DEFINITION_API: nginx/.aws/nginx-task-define.json
   ECR_REPOSITORY: nginx
-  CONTAINER_NAME: ngix-container # タスク定義内の"name"と合わせる必要がある。
+  CONTAINER_NAME: nginx-container # タスク定義内の"name"と合わせる必要がある。
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  nginx-ecr-push:
+  ecr-push:
     runs-on: ubuntu-latest
-    defaults: # defaultsを設定することでワークフロー内の全てのjobに値が反映される。
+    defaults:
       run:
-        working-directory:  nginx/
+        working-directory: nginx/
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -33,7 +37,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_GITHUB_ACTIONS }}
 
     # https://github.com/aws-actions/amazon-ecr-login
       - name: Login to Amazon ECR
@@ -45,23 +49,24 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}  # 'Login to Amazon ECR'の結果の中の'repository'の値を参照する
           # docker image tag temp_api_image:latest {アカウントID}.dkr.ecr.ap-northeast-1.amazonaws.com/nginx:sha
         run: | 
+          set -eux  # デバッグモード追加
           docker image build -t temp_api_image:latest .
           docker image tag temp_api_image:latest $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
           docker image push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-          echo $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} > nginx-image-uri.txt
+          echo $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} > image-uri.txt
       
     # https://github.com/actions/upload-artifact
       - name: upload the Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nginx-image-uri
-          path: nginx/nginx-image-uri.txt
+          name: image-uri
+          path: image-uri.txt
 
 
   # Deploy
-  nginx-ecr-deploy:
+  ecr-deploy:
     runs-on: ubuntu-latest
-    needs: [nginx-ecr-push]
+    needs: [ecr-push]
 
     steps: 
       - name: checkout
@@ -71,18 +76,18 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_GITHUB_ACTIONS }}
 
       # https://github.com/actions/download-artifact
       - name: Download the Artifact
         uses: actions/download-artifact@v4 # uploadと同じバージョン(v4),nameを指定しないとエラーになるので注意。
         with:
-          name: nginx-image-uri
+          name: image-uri
           path: download/artifacts #ランナーの中でダウンロード先のディレクトリが動的に作成されるのでこちらは任意のパスを記載。 
 
       - name: Define the image URI
         run: | 
-          echo "NGINX_IMAGE_URI=$(cat download/artifacts/nginx-image-uri.txt)" >> $GITHUB_ENV
+          echo "IMAGE_URI=$(cat download/artifacts/image-uri.txt)" >> $GITHUB_ENV
 
       # https://github.com/aws-actions/amazon-ecs-render-task-definition
       - name: Fill in the new image URI in the amazon ECS task definition
@@ -91,13 +96,13 @@ jobs:
         with:
           task-definition: ${{ env.ECS_TASK_DEFINITION_API }}
           container-name: ${{ env.CONTAINER_NAME}}
-          image: ${{ env.NGINX_IMAGE_URI }}
+          image: ${{ env.IMAGE_URI }}
 
       #  https://github.com/aws-actions/amazon-ecs-deploy-task-definition
       - name: Deploy ECS task
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
-          # wait-for-serivce-stability: true # ECSタスクが安定的に起動状態になるまでワークフローを待機する。
+          wait-for-service-stability: true
