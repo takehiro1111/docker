@@ -1,6 +1,5 @@
-name: Nginx Deploy ECR Repository
+name: Push ECR & Depoloy ECS 
 run-name: ${{ github.workflow }} by @${{ github.actor }}
-
 
 on:
   push:
