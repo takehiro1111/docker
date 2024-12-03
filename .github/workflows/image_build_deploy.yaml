@@ -17,18 +17,34 @@ permissions:
   contents: read
 
 jobs:
+  set-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_config: ${{ toJson(matrix.config) }}
+    strategy:
+      matrix:
+        config:
+          - working_directory: nginx/
+            ecr_repository: nginx
+            ecs_cluster: cluster-web
+            ecs_service: nginx-service-stg
+            ecs_task_difinition_api: nginx/.aws/nginx-task-define.json
+            container_name: nginx-container # タスク定義内の"name"と合わせる必要がある。
+    steps:
+      - name: Set matrix output
+        run: echo "Matrix configuration is ready!"
+
   ecr-push:
+    needs: [set-matrix]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - working_directory: nginx/
-            ecr_repository: nginx
+        config: ${{ fromJson(needs.set-matrix.outputs.matrix_config) }}
     env:
-      ECR_REPOSITORY: ${{ matrix.ecr_repository }}
+      ECR_REPOSITORY: ${{ matrix.config.ecr_repository }}
     defaults:
       run:
-        working-directory: ${{ matrix.working_directory }}
+        working-directory: ${{ matrix.config.working_directory }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -61,25 +77,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: image-uri
-          path: ${{ matrix.working_directory }}/image-uri.txt
+          path: ${{ matrix.config.working_directory }}/image-uri.txt
 
 
   # Deploy
   ecr-deploy:
     runs-on: ubuntu-latest
-    needs: [ecr-push]
+    needs: [ecr-push,set-matrix]
     strategy:
       matrix:
-        include:
-          - ecs_cluster: cluster-web
-            ecs_service: nginx-service-stg
-            ecs_task_difinition_api: nginx/.aws/nginx-task-define.json
-            container_name: nginx-container # タスク定義内の"name"と合わせる必要がある。
+        config: ${{ fromJson(needs.set-matrix.outputs.matrix_config) }}
     env:
-      ECS_CLUSTER: ${{ matrix.ecs_cluster }}
-      ECS_SERVICE: ${{ matrix.ecs_service }}
-      ECS_TASK_DEFINITION_API: ${{ matrix.ecs_task_difinition_api }}
-      CONTAINER_NAME: ${{ matrix.container_name }}
+      ECS_CLUSTER: ${{ matrix.config.ecs_cluster }}
+      ECS_SERVICE: ${{ matrix.config.ecs_service }}
+      ECS_TASK_DEFINITION_API: ${{ matrix.config.ecs_task_difinition_api }}
+      CONTAINER_NAME: ${{ matrix.config.container_name }}
 
     steps: 
       - name: checkout
