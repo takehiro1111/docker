@@ -70,7 +70,7 @@ jobs:
       - name: Define the image URI
         id: download_image_uri
         run: | 
-          echo "IMAGE_URI=$(cat  download/artifacts/image-uri.txt)" >> "${GITHUB_OUTPUT}"
+          echo "IMAGE_URI=$(cat download/artifacts/image-uri.txt)" >> "${GITHUB_OUTPUT}"
 
       # https://github.com/aws-actions/amazon-ecs-render-task-definition
       - name: Fill in the new image URI in the amazon ECS task definition
