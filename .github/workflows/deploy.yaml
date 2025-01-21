@@ -14,25 +14,17 @@ permissions:
 jobs:
   ecr-push:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - working_directory: nginx/
-            ecr_repository: nginx
-            ecs_cluster: cluster-web
-            ecs_service: nginx-service-stg
-            ecs_task_difinition_api: nginx/.aws/nginx-task-define.json
-            container_name: nginx-container # タスク定義内の"name"と合わせる必要がある。
     
     env:
-      ECR_REPOSITORY: ${{ matrix.ecr_repository }}
-      ECS_CLUSTER: ${{ matrix.ecs_cluster }}
-      ECS_SERVICE: ${{ matrix.ecs_service }}
-      ECS_TASK_DEFINITION_API: ${{ matrix.ecs_task_difinition_api }}
-      CONTAINER_NAME: ${{ matrix.container_name }}
+      ECR_REPOSITORY: nginx
+      ECS_CLUSTER: cluster-web
+      ECS_SERVICE: nginx-service-stg
+      ECS_TASK_DEFINITION_API: nginx/.aws/nginx-task-define.json
+      CONTAINER_NAME: nginx-container # タスク定義内の"name"と合わせる必要がある。
+      WORKING_DIR: nginx
     defaults:
       run:
-        working-directory: ${{ matrix.working_directory }}
+        working-directory: nginx/
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -65,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: image-uri
-          path: ${{ matrix.working_directory }}/image-uri.txt
+          path: ${{ env.WORKING_DIR }}/image-uri.txt
 
   # Deploy
       # https://github.com/actions/download-artifact
